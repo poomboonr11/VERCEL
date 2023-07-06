@@ -5,7 +5,7 @@ export default async (req, res) => {
   try {
     const client = await clientPromise;
     const db = client.db('EVCharger');
-    const { CA, Fname, Lname, Location_detail_long, Location_detail_lat, Location_province, Location_amphure, Location_tambon } = req.body;
+    const { CA, Fname, Lname, Location_detail_long, Location_detail_lat, Location_province, Location_amphure, Location_tambon,HB_rate } = req.body;
 
     const result = await db.collection('posts').updateOne(
       { CA: CA },
@@ -17,7 +17,8 @@ export default async (req, res) => {
           Location_detail_lat: Location_detail_lat,
           Location_province: Location_province,
           Location_amphure: Location_amphure,
-          Location_tambon: Location_tambon
+          Location_tambon: Location_tambon,
+          HB_rate: HB_rate,
         },
       }
     );

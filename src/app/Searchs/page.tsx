@@ -32,44 +32,190 @@ const Page = () => {
   const [longitude, setLongitude] = useState(null);
   const [result, setResult] = useState(null);
   const [markerPosition, setMarkerPosition] = useState(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
-    const handleSubmit = async (event) => {
-      event.preventDefault();
-  
-      const formData = new FormData(event.target);
-      const CA = formData.get('CA');
-  
-      try {
-        const response = await fetch('/api/Search/[CA]', {
-          method: 'POST',
-          body: JSON.stringify({ CA }),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-  
-        const data = await response.json();
-  
-        if (response.ok) {
-          setResult(data);
-          setLatitude(data.Location_detail_lat);
-          setLongitude(data.Location_detail_long);
-        } else {
-          setResult(null);
-          setLatitude(null);
-          setLongitude(null);
-        }
-      } catch (error) {
-        console.error(error);
+
+  useEffect(() => {
+    if (latitude && longitude) {
+      setMarkerPosition([latitude, longitude]);
+    }
+  }, [latitude, longitude]);
+
+  const handleSearch = async () => {
+    const formData = new FormData();
+    formData.append('CA', document.getElementById('CA').value);
+
+    try {
+      const response = await fetch('/api/Search/[CA]', {
+        method: 'POST',
+        body: JSON.stringify({ CA: formData.get('CA') }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResult(data);
+        setLatitude(data.Location_detail_lat);
+        setLongitude(data.Location_detail_long);
+      } else {
         setResult(null);
         setLatitude(null);
         setLongitude(null);
+        setMarkerPosition(null);
       }
-    };
+    } catch (error) {
+      console.error(error);
+      setResult(null);
+      setLatitude(null);
+      setLongitude(null);
+      setMarkerPosition(null);
+    }
+  };
 
   return (
-      <>
-      </>
+    <Popover>
+      <PopoverTrigger>
+        <Box
+          ml={2}
+          mt={10}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          width="40px"
+          height="40px"
+          p="4"
+          borderRadius="lg"
+          role="group"
+          cursor="pointer"
+          _hover={{
+            bg: '#30305a',
+            color: 'purple',
+          }}
+        >
+          <Icon
+            fontSize="16"
+            _groupHover={{
+              color: 'white',
+            }}
+            as={FiSearch}
+            color="white"
+          />
+          <span style={{ position: 'absolute', left: '-9999px' }}>Search</span>
+        </Box>
+      </PopoverTrigger>
+      <PopoverContent>
+        <PopoverArrow />
+        <PopoverCloseButton />
+        <PopoverHeader>
+          <Text align="center" fontSize="lg" fontWeight="bold">
+            SEARCH EV-CHARGER
+          </Text>
+        </PopoverHeader>
+        <PopoverBody>
+          <Stack spacing='24px'>
+            <FormControl>
+              <FormLabel>จังหวัด</FormLabel>
+              <Select
+                placeholder='จังหวัด'
+                id='Location_province'
+                name='Location_province'
+                onChange={(event) => {
+                  setSelected_province(event.target.value);
+                  province_setSelect(false);
+                }}
+              >
+                {data.data.map((data) => (
+                  <option key={data.name_th}>{data.name_th}</option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel>อำเภอ</FormLabel>
+              <Select
+                placeholder='อำเภอ'
+                id='Location_amphure'
+                name='Location_amphure'
+                isDisabled={province_isSelect}
+                onChange={(event) => {
+                  setSelected_amphur(event.target.value);
+                  amphur_setSelect(false);
+                }}
+              >
+                {data.data.map((province) => {
+                  if (province.name_th === selected_province) {
+                    return province.amphure.map((amphure) => (
+                      <option key={amphure.name_th}>{amphure.name_th}</option>
+                    ));
+                  } else {
+                    return null;
+                  }
+                })}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel>ตำบล</FormLabel>
+              <Select
+                placeholder='ตำบล'
+                id='Location_tambon'
+                name='Location_tambon'
+                isDisabled={amphur_isSelect}
+                onChange={() => tambon_setSelect(false)}
+              >
+                {data.data.map((province) => {
+                  if (province.name_th === selected_province) {
+                    return province.amphure.map((amphure) => {
+                      if (amphure.name_th === selected_amphur) {
+                        return amphure.tambon.map((tambon) => (
+                          <option key={tambon.name_th}>{tambon.name_th}</option>
+                        ));
+                      }
+                      return null;
+                    });
+                  }
+                  return null;
+                })}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel>CA number (รหัสเครื่อง)</FormLabel>
+              <Input type='text' id="CA" name="CA" required />
+            </FormControl>
+            <Button
+  colorScheme="purple"
+  onClick={() => setIsMapOpen(!isMapOpen)}
+  mt={5}
+>
+<Button colorScheme='purple' onClick={handleSearch}>
+              Search
+            </Button>
+  {isMapOpen ? 'Close Map' : 'Open Map'}
+</Button>
+
+            {result !== null ? (
+              <Box mt={5}>
+                <Text>จังหวัด: {result.Location_province}</Text>
+                <Text>อำเภอ: {result.Location_amphure}</Text>
+                <Text>ตำบล: {result.Location_tambon}</Text>
+              </Box>
+            ) : (
+              <Text mt={5}>NOT FOUND</Text>
+            )}
+            {markerPosition && (
+              <Box mt={5}>
+                <Text>CA Marker:</Text>
+                <MapContainer center={markerPosition} zoom={13} style={{ height: '400px' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker position={markerPosition} />
+                </MapContainer>
+              </Box>
+            )}
+          </Stack>
+        </PopoverBody>
+      </PopoverContent>
+    </Popover>
   );
 };
 
