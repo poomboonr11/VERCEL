@@ -36,8 +36,6 @@
     import { SlEnergy } from 'react-icons/sl';
     import { FiServer } from 'react-icons/fi';
     import { useSearchParams } from 'next/navigation';
-    import LineChart from '../../Mychart';
-    import DrawerExample from '../../components/notificate';
     import { useSession } from 'next-auth/react';
     import { useRouter } from 'next/navigation';
     import { MapContainer, TileLayer, Marker } from 'react-leaflet';
@@ -53,13 +51,39 @@
     const axios = require('axios');
     
     export default function BasicStatistics() {
+      interface Charger {
+        _id: string;
+        CA: string;
+        Fname: string;
+        Lname: string;
+        Location_detail_lat: string;
+        Location_detail_long: string;
+        Location_province: string;
+        Location_amphure: string;
+        Location_tambon: string;
+        // Other properties of the charger object
+      }
+
+      interface ResultData {
+        CA: string;
+        Location_province: string;
+        Location_amphure: string;
+        Location_tambon: string;
+        status: string;
+        // เพิ่มคุณสมบัติอื่น ๆ ตามต้องการ
+      }
       const customIcon = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/61/61942.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32],
       });
-      const [chargers, setChargers] = useState([]);
-      const [editableCharger, setEditableCharger] = useState(null);
+
+      const [chargers, setChargers] = useState<Charger[]>([]); //---<Charger[ดึงinterfaceมาใช้]>
+      const editableCharger = useRef<Charger | null>(null);
+      const editableChargerRef = useRef<Charger | null>(null);
+      const focusableElementRef = useRef<HTMLButtonElement | null>(null);
+
+
 
       const [isSwitchOn, setSwitchOn] = useState(true);
       const [isCAEntered, setIsCAEntered] = useState(false);
@@ -67,11 +91,13 @@
       const [longitude, setLongitude] = useState(null);
     
       const { data: session } = useSession();
-      const [data, setData] = useState([]);
-      const [result, setResult] = useState(null);
+      const [data, setData] = useState<{ heartbeatInterval: number }[]>([]);
+
       const [status, setStatus] = useState('');
 
       const [desiredCA, setDesiredCA] = useState('');
+
+      const [result, setResult] = useState<ResultData | null>(null);
 //-----------------------------------------------handleเปลี่ยนHB_rate-----------------------------------------------//
 const [HB_rate, setHB_rate] = useState(0);
 const [workloadData, setWorkloadData] = useState(0);
@@ -90,7 +116,7 @@ useEffect(() => {
   fetchWorkloadData();
 }, [result?.CA]);
 
-const handleSliderChange = async (value) => {
+const handleSliderChange = async (value: number | null) => {
   const newHB_rate = value !== null ? value : HB_rate;
   const newWorkloadData = value !== null ? value : workloadData;
 
@@ -107,6 +133,7 @@ const handleSliderChange = async (value) => {
     console.error('Error updating HB_rate:', error);
   }
 };
+
 
 
       
@@ -126,25 +153,26 @@ const handleSliderChange = async (value) => {
         }
       };
     
-      const handleEdit = (charger) => {
-        setEditableCharger(charger);
+      const handleEdit = (charger: Charger) => {
+        editableChargerRef.current = charger;
       };
-    
+      
       const handleSave = async () => {
+        const editableCharger = editableChargerRef.current;
         if (editableCharger) {
           try {
-            const response = await fetch(`/api/updateCharger?id=${editableCharger._id}`, {
+            const response = await fetch(`/api/updateCharger?id=${editableChargerRef}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(editableCharger),
+              body: JSON.stringify(editableChargerRef),
             });
     
             if (response.ok) {
               // อัปเดตรายการชาร์จหลังจากบันทึกสำเร็จ
               getChargerList();
-              setEditableCharger(null);
+              editableChargerRef.current = null;
             } else {
               console.error('Failed to update charger:', response.statusText);
             }
@@ -154,20 +182,23 @@ const handleSliderChange = async (value) => {
         }
       };
     
-      const handleCancel = () => {
-        setEditableCharger(null);
-      };
     
-      const handleChange = (e, field) => {
-        if (editableCharger) {
-          setEditableCharger({
-            ...editableCharger,
+      const handleChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Charger) => {
+        if (editableCharger.current) {
+          editableCharger.current = {
+            ...editableCharger.current,
             [field]: e.target.value,
-          });
+          };
         }
       };
     
-      const deleteCharger = async (id) => {
+      useEffect(() => {
+        if (focusableElementRef.current) {
+          focusableElementRef.current.focus();
+        }
+      }, []);
+    
+      const deleteCharger = async (id: string) => {
         try {
           const response = await fetch(`/api/deleteCharger?id=${id}`, {
             method: 'DELETE',
@@ -175,22 +206,22 @@ const handleSliderChange = async (value) => {
               'Content-Type': 'application/json',
             },
           });
-    
+      
           if (response.ok) {
-            // อัปเดตรายการชาร์จหลังจากลบสำเร็จ
-            getChargerList();
+            // Handle success case
           } else {
-            console.error('Failed to delete charger:', response.statusText);
+            // Handle error case
           }
         } catch (error) {
-          console.error('An error occurred while deleting charger:', error);
+          // Handle error case
         }
       };
+      
       
       const toast = useToast();
       const router = useRouter();
     
-      const handleSwitchChange = async (e) => {
+      const handleSwitchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const isChecked = e.target.checked;
       
         if (isChecked) {
@@ -243,7 +274,7 @@ const handleSliderChange = async (value) => {
       }, []);
 
       const [isOpen, setIsOpen] = useState(false); // สถานะเปิด/ปิด AlertDialog
-      const cancelRef = useRef();
+      const cancelRef = useRef<HTMLElement | null>(null);
       // เปิด AlertDialog
       const handleSwitchClose = () => {
           setIsOpen(true);
@@ -279,44 +310,44 @@ const handleSliderChange = async (value) => {
 
 
 //-------------------------------------handleเวลากดenterที่formCAแล้ว---------------------------------////////       
-        const handleSubmit = async (event) => {
-          event.preventDefault();
-        
-          const formData = new FormData(event.target);
-          const caValue = formData.get('CA');
-          
-          // Set the value of desiredCA
-          setDesiredCA(caValue);
-          
-          try {
-            // Fetch the data based on the desiredCA value
-            const response = await fetch('/api/Search/[CA]', {
-              method: 'POST',
-              body: JSON.stringify({ CA: caValue }),
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            });
-        
-            const data = await response.json();
-        
-            if (response.ok) {
-              setResult(data);
-              setLatitude(data.Location_detail_lat);
-              setLongitude(data.Location_detail_long);
-            } else {
-              setResult(null);
-              setLatitude(null);
-              setLongitude(null);
-            }
-          } catch (error) {
-            console.error(error);
+        const handleSubmit = async (event: React.FormEvent<EventTarget>) => {
+        event.preventDefault();
+
+        const form = event.target as HTMLFormElement;
+        const formData = new FormData(form);
+        const caValue = formData.get('CA')?.toString() ?? '';
+
+        setDesiredCA(caValue);
+
+        try {
+          // Fetch the data based on the desiredCA value
+          const response = await fetch('/api/Search/[CA]', {
+            method: 'POST',
+            body: JSON.stringify({ CA: caValue }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setResult(data);
+            setLatitude(data.Location_detail_lat);
+            setLongitude(data.Location_detail_long);
+          } else {
             setResult(null);
             setLatitude(null);
             setLongitude(null);
           }
-        };
-        
+        } catch (error) {
+          console.error(error);
+          setResult(null);
+          setLatitude(null);
+          setLongitude(null);
+        }
+      };
+
 //-------------------------------------handleเวลาคลิกที่หมุด---------------------------------////////
       const handleMarkerClick = () => {
         };
@@ -401,16 +432,18 @@ const handleSliderChange = async (value) => {
               <Box pl={{ base: 2, md: 4 }} mt={75} p={5} w={'1245px'} h={'600px'} bg={useColorModeValue('white', 'gray.800')} boxShadow={'lg'} rounded={'lg'} pos={'relative'} zIndex={1} onClick={handleMarkerClick}>
               {isLoading && <Loading />} {/* แสดง Loading component หาก isLoading เป็น true */}
                 <Box pos={'relative'} width={'1200px'} height={'full'} rounded={'lg'} boxShadow={'lg'}>
-                  <MapContainer  center={[latitude, longitude]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors" />
-                    <Marker position={[latitude, longitude]} icon={customIcon}>
+                {latitude !== null && longitude !== null && (
+                <MapContainer center={[latitude, longitude]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors" />
+                  <Marker position={[latitude, longitude]} icon={customIcon}>
                     <Popup>
-                      <Heading size="sm" >CA:{result.CA}</Heading>
-                      <Text fontSize="md" fontWeight="bold">{result.Location_province}</Text>
+                      <Heading size="sm">CA:{result.CA}</Heading>
+                      <Text fontSize="md" fontWeight="bold">{result && result.Location_province}</Text>
                       <Text>{result.Location_amphure},{result.Location_tambon}</Text>
                     </Popup>
-                    </Marker>
-                  </MapContainer>
+                  </Marker>
+                </MapContainer>
+              )}
                 </Box>
               </Box>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={{ base: 5, lg: 6 }} mt={5}>
@@ -456,7 +489,7 @@ const handleSliderChange = async (value) => {
                   <Button colorScheme="red"  onClick={handleSwitchConfirm}>
                     Confirm
                   </Button>
-                  <Button ref={cancelRef} ml={3} onClick={handleSwitchCancel}>
+                  <Button ref={(cancelRef as React.RefObject<HTMLButtonElement>)} ml={3} onClick={handleSwitchCancel}>
                     Cancel
                   </Button>
                 </AlertDialogFooter>
@@ -479,7 +512,6 @@ const handleSliderChange = async (value) => {
                         HeartbeatInterval
                       </StatLabel>
                       <StatNumber fontSize={'2xl'} fontWeight={'medium'}>
-                        {data.map((item) => <span key={item}>{item.heartbeatInterval}</span>)}
                       </StatNumber>
                     </Box>
                     <Slider
@@ -548,88 +580,89 @@ const handleSliderChange = async (value) => {
         </Tr>
       </Thead>
               <Tbody>
-                {chargers
-                  .filter((charger) => charger.CA === desiredCA)
-                  .map((charger) => (
-                    <Tr key={charger.CA}>
-                      <Td>{charger.CA}</Td>
-                      <Td>
-                        {editableCharger?.CA === charger.CA ? (
-                          <input
-                            type="text"
-                            value={editableCharger.Fname}
-                            onChange={(e) => handleChange(e, 'Fname')}
-                          />
-                        ) : (
-                          charger.Fname
-                        )}
-                      </Td>
-                      <Td>
-                        {editableCharger?.CA === charger.CA ? (
-                          <input
-                            type="text"
-                            value={editableCharger.Lname}
-                            onChange={(e) => handleChange(e, 'Lname')}
-                          />
-                        ) : (
-                          charger.Lname
-                        )}
-                      </Td>
-                      <Td>
-                        {editableCharger?.CA === charger.CA ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editableCharger.Location_detail_lat}
-                              onChange={(e) => handleChange(e, 'Location_detail_lat')}
-                            />
-                            <input
-                              type="text"
-                              value={editableCharger.Location_detail_long}
-                              onChange={(e) => handleChange(e, 'Location_detail_long')}
-                            />
-                            <input
-                              type="text"
-                              value={editableCharger.Location_province}
-                              onChange={(e) => handleChange(e, 'Location_province')}
-                            />
-                            <input
-                              type="text"
-                              value={editableCharger.Location_amphure}
-                              onChange={(e) => handleChange(e, 'Location_amphure')}
-                            />
-                            <input
-                              type="text"
-                              value={editableCharger.Location_tambon}
-                              onChange={(e) => handleChange(e, 'Location_tambon')}
-                            />
-                          </>
-                        ) : (
-                          `${charger.Location_detail_long}, ${charger.Location_detail_lat}, ${charger.Location_province}, ${charger.Location_amphure}, ${charger.Location_tambon}`
-                        )}
-                      </Td>
-                      <Td>
-                        {editableCharger?.CA === charger.CA ? (
-                          <Button colorScheme="blue" onClick={handleSave}>
-                            Save
-                          </Button>
-                        ) : (
-                          <>
-                            <Button colorScheme="blue" onClick={() => handleEdit(charger)}>
-                              Edit
-                            </Button>
-                            <Button
-                              ml={2}
-                              colorScheme="red"
-                              onClick={() => deleteCharger(charger._id)}
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                      </Td>
-                    </Tr>
-                  ))}
+              {chargers
+  .filter((charger) => charger.CA === desiredCA)
+  .map((charger) => (
+    <Tr key={charger._id}>
+      <Td>{charger.CA}</Td>
+      {/* ตรวจสอบว่า charger.CA มีอยู่หรือไม่ก่อนที่จะเข้าถึง */}
+      <Td>
+      {editableChargerRef.current?.CA === charger.CA ? (
+        <input
+          type="text"
+          value={editableChargerRef.current?.Fname}
+          onChange={(e) => handleChange(e, 'Fname')}
+        />
+      ) : (
+        charger.Fname
+      )}
+      </Td>
+      <Td>
+        {editableChargerRef.current?.CA === charger.CA ? (
+          <input
+            type="text"
+            value={editableChargerRef.current?.Lname}
+            onChange={(e) => handleChange(e, 'Lname')}
+          />
+        ) : (
+          charger.Lname
+        )}
+      </Td>
+      <Td>
+            {editableChargerRef.current?.CA === charger.CA ? (
+        <>
+          <input
+            type="text"
+            value={editableChargerRef.current.Location_detail_lat}
+            onChange={(e) => handleChange(e, 'Location_detail_lat')}
+          />
+          <input
+            type="text"
+            value={editableChargerRef.current.Location_detail_long}
+            onChange={(e) => handleChange(e, 'Location_detail_long')}
+          />
+          <input
+            type="text"
+            value={editableChargerRef.current.Location_province}
+            onChange={(e) => handleChange(e, 'Location_province')}
+          />
+          <input
+            type="text"
+            value={editableChargerRef.current.Location_amphure}
+            onChange={(e) => handleChange(e, 'Location_amphure')}
+          />
+          <input
+            type="text"
+            value={editableChargerRef.current.Location_tambon}
+            onChange={(e) => handleChange(e, 'Location_tambon')}
+          />
+        </>
+        ) : (
+          `${charger.Location_detail_long}, ${charger.Location_detail_lat}, ${charger.Location_province}, ${charger.Location_amphure}, ${charger.Location_tambon}`
+        )}
+      </Td>
+      <Td>
+      {editableChargerRef.current?.CA === charger.CA ? (
+        <Button colorScheme="blue" onClick={handleSave}>
+          Save
+        </Button>
+      ) : (
+        <>
+          <Button colorScheme="blue" onClick={() => handleEdit(charger)}>
+            Edit
+          </Button>
+          <Button
+            ml={2}
+            colorScheme="red"
+            onClick={() => deleteCharger(charger._id)}
+          >
+            Delete
+          </Button>
+        </>
+      )}
+      </Td>
+    </Tr>
+  ))}
               </Tbody>
             </Table>
           </Stat>

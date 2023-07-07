@@ -25,14 +25,14 @@ import {
     const [selected_amphur, setSelected_amphur] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
-    
-  
-    const handleSubmit = async (event) => {
+    const [Fname, setFname] = useState('');
+    const [Lname, setLname] = useState('');
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       setIsSubmitting(true);
-  
+    
       try {
-        const formData = new FormData(event.target);
+        const formData = new FormData(event.currentTarget as HTMLFormElement);
         await axios.post('/api/addCharger', Object.fromEntries(formData));
         setSubmitSuccess(true);
         setIsSubmitting(false);
@@ -41,7 +41,7 @@ import {
         setIsSubmitting(false);
       }
     };
-//----------------------------LOADING------------------------------------------------------//
+//---------------------LOADING------------------------------------------------------//
 const [isLoading, setLoading] = useState(true);
 
 useEffect(() => {
@@ -77,9 +77,16 @@ useEffect(() => {
               </Box>
             )}
    <Stack direction={['column', 'row']} spacing='24px'>
-                        <FormControl isRequired>
-                        <FormLabel>ชื่อ</FormLabel>
-                                    <Input type="text" id="Fname" name="Fname" onChange={(e)=> setFname(e.target.value)}  required placeholder='First name' />
+                          <FormControl isRequired>
+                          <FormLabel>ชื่อ</FormLabel>
+                          <Input
+                            type="text"
+                            id="Fname"
+                            name="Fname"
+                            onChange={(e) => setFname(e.target.value)}
+                            required
+                            placeholder='First name'
+                          />
                         </FormControl>
                         <FormControl isRequired>
                         <FormLabel>นามสกุล</FormLabel>

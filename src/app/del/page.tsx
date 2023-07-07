@@ -4,9 +4,32 @@ import { useEffect, useState } from 'react';
 import Loading from '../loading';
 
 const ChargerPage = () => {
-  const [chargers, setChargers] = useState([]);
-  const [editableCharger, setEditableCharger] = useState(null);
-
+  type Charger = {
+    _id: string;
+    CA: string;
+    Fname: string;
+    Lname: string;
+    Location_detail_lat: string;
+    Location_detail_long: string;
+    Location_province: string;
+    Location_amphure: string;
+    Location_tambon: string;
+  };
+  interface Result {
+    _id: string;
+    CA: string;
+    Fname: string;
+    Lname: string;
+    Location_detail_lat: string;
+    Location_detail_long: string;
+    Location_province: string;
+    Location_amphure: string;
+    Location_tambon: string;
+    // other properties
+  }
+  const [results, setResults] = useState<Result[]>([]);
+  const [editableCharger, setEditableCharger] = useState<Charger | null>(null); // Specify the type as 'Charger | null'
+  const [chargers, setChargers] = useState<Charger[]>([]); //---<Charger[ดึงinterfaceมาใช้]>
   useEffect(() => {
     getChargerList();
   }, []);
@@ -21,7 +44,7 @@ const ChargerPage = () => {
     }
   };
 
-  const handleEdit = (charger) => {
+  const handleEdit = (charger: Charger) => {
     setEditableCharger(charger);
   };
 
@@ -53,7 +76,7 @@ const ChargerPage = () => {
     setEditableCharger(null);
   };
 
-  const handleChange = (e, field) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (editableCharger) {
       setEditableCharger({
         ...editableCharger,
@@ -62,7 +85,7 @@ const ChargerPage = () => {
     }
   };
 
-  const deleteCharger = async (id) => {
+  const deleteCharger = async (id: string) => {
     try {
       const response = await fetch(`/api/deleteCharger?id=${id}`, {
         method: 'DELETE',
@@ -70,7 +93,7 @@ const ChargerPage = () => {
           'Content-Type': 'application/json',
         },
       });
-
+  
       if (response.ok) {
         // อัปเดตรายการชาร์จหลังจากลบสำเร็จ
         getChargerList();

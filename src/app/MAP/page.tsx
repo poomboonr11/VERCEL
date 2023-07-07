@@ -1,15 +1,28 @@
-"use client";
+'use client'
 import React, { useState, useEffect } from 'react';
 import { Box, Heading, Text, useColorModeValue } from '@chakra-ui/react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import dynamic from 'next/dynamic';
+import { icon as LeafletIcon } from 'leaflet';
+
+const MapContainer = dynamic(() => import('react-leaflet').then((module) => module.MapContainer), {
+  ssr: false,
+});
+const TileLayer = dynamic(() => import('react-leaflet').then((module) => module.TileLayer), {
+  ssr: false,
+});
+const Marker = dynamic(() => import('react-leaflet').then((module) => module.Marker), {
+  ssr: false,
+});
+const Popup = dynamic(() => import('react-leaflet').then((module) => module.Popup), {
+  ssr: false,
+});
 
 const MapPage = () => {
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<any[]>([]); // กำหนดชนิดข้อมูลเป็น any[]
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedAmphur, setSelectedAmphur] = useState('');
   const [selectedTambon, setSelectedTambon] = useState('');
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +51,7 @@ const MapPage = () => {
     fetchData();
   }, [selectedProvince, selectedAmphur, selectedTambon]);
 
-  const customIcon = L.icon({
+  const customIcon = LeafletIcon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/61/61942.png',
     iconSize: [32, 32],
     iconAnchor: [16, 32],

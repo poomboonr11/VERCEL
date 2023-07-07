@@ -1,14 +1,18 @@
 import { Box, Flex, keyframes, Tooltip } from '@chakra-ui/react';
 import React from 'react';
 
-const Status = ({ status }) => {
+interface StatusProps {
+  status: string;
+}
+
+const Status: React.FC<StatusProps> = ({ status }) => {
   const activeColor = 'green';
   const inactiveColor = 'grey';
   const busyColor = 'orange';
   const ringScaleMin = 0.33;
   const ringScaleMax = 0.66;
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     if (status === 'active') {
       return activeColor;
     } else if (status === 'inactive') {

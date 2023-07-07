@@ -30,48 +30,73 @@ const Page = () => {
   const [selected_amphur, setSelected_amphur] = useState('');
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
-  const [result, setResult] = useState(null);
-  const [markerPosition, setMarkerPosition] = useState(null);
+  const [result, setResult] = useState({
+    Location_province: '',
+    Location_amphure: '',
+    Location_tambon: ''
+  });
   const [isMapOpen, setIsMapOpen] = useState(false);
 
 
+  const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
+
   useEffect(() => {
-    if (latitude && longitude) {
+    if (latitude !== null && longitude !== null) {
       setMarkerPosition([latitude, longitude]);
+    } else {
+      setMarkerPosition(null);
     }
   }, [latitude, longitude]);
+  
+  
 
   const handleSearch = async () => {
     const formData = new FormData();
-    formData.append('CA', document.getElementById('CA').value);
-
-    try {
-      const response = await fetch('/api/Search/[CA]', {
-        method: 'POST',
-        body: JSON.stringify({ CA: formData.get('CA') }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setResult(data);
-        setLatitude(data.Location_detail_lat);
-        setLongitude(data.Location_detail_long);
-      } else {
-        setResult(null);
+    const inputElement = document.getElementById('CA') as HTMLInputElement;
+    
+    if (inputElement !== null) {
+      formData.append('CA', inputElement.value);
+  
+      try {
+        const response = await fetch('/api/Search/[CA]', {
+          method: 'POST',
+          body: JSON.stringify({ CA: formData.get('CA') }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          setResult({
+            Location_province: data.Location_province,
+            Location_amphure: data.Location_amphure,
+            Location_tambon: data.Location_tambon
+          });
+          setLatitude(data.Location_detail_lat);
+          setLongitude(data.Location_detail_long);
+        } else {
+          setResult({
+            Location_province: '',
+            Location_amphure: '',
+            Location_tambon: ''
+          });
+          setLatitude(null);
+          setLongitude(null);
+          setMarkerPosition(null);
+        }
+      } catch (error) {
+        console.error(error);
+        setResult({
+          Location_province: '',
+          Location_amphure: '',
+          Location_tambon: ''
+        });
         setLatitude(null);
         setLongitude(null);
         setMarkerPosition(null);
       }
-    } catch (error) {
-      console.error(error);
-      setResult(null);
-      setLatitude(null);
-      setLongitude(null);
-      setMarkerPosition(null);
     }
   };
 
