@@ -27,7 +27,7 @@ export const authOptions = {
             }
         })
 
-    ], secret: process.env.NEXTAUTH_SECRET,
+    ], secret: '39c6bc1c70e1ca5898cff76d4fda33f2',
     callbacks: {
         async jwt({ token, user, account }) {
             if (account) {
